@@ -1,0 +1,46 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: mlops_postgres
+    environment:
+      PGDATA: "/var/lib/postgresql/data/pgdata"
+    env_file: .env.shared
+    volumes:
+      - ./postgres/createdb.sql:/docker-entrypoint-initdb.d/createdb.sql
+      - ./postgres:/var/lib/postgresql/data
+      - ./mlops_wine/storage/datasets/winequality-white.csv:/tmp/postgresql/data/winequality-white.csv
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U servicedb_user -d servicedb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: "1"
+          memory: 4G
+
+  web-service:
+    # image: skovi812/hw2:latest
+    build:
+      context: .
+    container_name: mlops_app
+    environment:
+      POSTGRES_HOST: "postgres"
+      POSTGRES_DB: "servicedb"
+      POSTGRES_USER: "servicedb_user"
+      POSTGRES_PASSWORD: "servicedb_passwd"
+    ports:
+      - "80:5000"
+
+  adminer:
+    image: adminer
+    restart: always
+    ports:
+      - 8080:8080
